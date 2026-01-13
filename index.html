@@ -661,8 +661,8 @@
             // 播放GIF特效
             playGifEffect(number) {
                 return new Promise(resolve => {
-                    // 設置GIF路徑
-                    const gifPath = `images/${number}e.gif`;
+                    // 設置GIF路徑 - 更新為 images/6e1.gif 格式
+                    const gifPath = `images/6e${number}.gif`;
                     this.gifImage.src = gifPath;
                     
                     // 顯示GIF容器
@@ -827,7 +827,7 @@
             const preloadGifs = () => {
                 const gifUrls = [];
                 for (let i = 1; i <= 22; i++) {
-                    gifUrls.push(`images/${i}e.gif`);
+                    gifUrls.push(`images/6e${i}.gif`);
                 }
                 
                 // 預加載所有GIF
