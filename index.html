@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1-22 隨機不重複抽取（優化版）</title>
+    <style>
+        :root {
+            /* 顏色變量 */
+            --common-color: rgba(255, 255, 255, 0.2);
+            --uncommon-color: rgba(50, 205, 50, 0.3);
+            --rare-color: rgba(51, 153, 255, 0.3);
+            --epic-color: rgba(153, 102, 255, 0.3);
+            --legendary-color: rgba(255, 215, 0, 0.3);
+            
+            /* 動畫時長 */
+            --animation-fast: 0.3s;
+            --animation-normal: 0.5s;
+            --animation-slow: 1s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            text-align: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        #drawButton {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all var(--animation-normal) ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            margin: 20px 0;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        #drawButton:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+            letter-spacing: 1px;
+        }
+
+        #drawButton:focus {
+            outline: 2px solid #ffffff;
+            outline-offset: 2px;
+        }
+
+        #drawButton:disabled {
+            background: linear-gradient(45deg, #b8b8b8, #888888);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            letter-spacing: normal;
+        }
+
+        #resultArea {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #currentNumber {
+            font-size: 8rem;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all var(--animation-slow) cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            line-height: 1;
+        }
+
+        #drawnNumbers {
+            background-color: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            min-height: 80px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        #drawnNumbers span {
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all var(--animation-normal) ease;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        #drawnNumbers span:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        #statusMessage {
+            font-style: italic;
+            color: #f0f0f0;
+            margin-top: 10px;
+            font-size: 1rem;
+            min-height: 20px;
+        }
+
+        /* 稀有度樣式 */
+        .common {
+            background-color: var(--common-color);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+        }
+
+        .uncommon {
+            background-color: var(--uncommon-color);
+            border-color: rgba(50, 205, 50, 0.5);
+            color: #90ee90;
+            font-weight: 600;
+        }
+
+        .rare {
+            background-color: var(--rare-color);
+            border-color: rgba(51, 153, 255, 0.5);
+            color: #add8e6;
+            font-weight: bold;
+        }
+
+        .epic {
+            background-color: var(--epic-color);
+            border-color: rgba(153, 102, 255, 0.5);
+            color: #d8bfd8;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(153, 102, 255, 0.5);
+        }
+
+        .legendary {
+            background-color: var(--legendary-color);
+            border-color: rgba(255, 215, 0, 0.5);
+            color: #f0e68c;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+            animation: legendaryPulse 2s infinite;
+        }
+
+        @keyframes legendaryPulse {
+            0% {
+                box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            }
+            100% {
+                box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+            }
+        }
+
+        /* 粒子效果容器 */
+        #particleContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0;
+        }
+
+        /* 稀有度標籤 */
+        .rarity-tag {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 數字出現動畫 */
+        @keyframes numberAppear {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .number-appear {
+            animation: numberAppear 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* 稀有度提示 */
+        #rarityMessage {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+            height: 2rem;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 重置按鈕 */
+        #resetButton {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all var(--animation-normal) ease;
+            margin-top: 10px;
+        }
+
+        #resetButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+        }
+
+        /* GIF特效容器 */
+        .gif-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .gif-overlay.active {
+            display: flex;
+        }
+
+        .gif-container {
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .gif-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .container {
+                padding: 25px 30px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            #currentNumber {
+                font-size: 6rem;
+            }
+            
+            #drawButton {
+                width: 90%;
+                font-size: 1.1rem;
+                padding: 12px 25px;
+            }
+            
+            #rarityMessage {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px 25px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            #currentNumber {
+                font-size: 5rem;
+            }
+            
+            #drawButton {
+                width: 100%;
+                font-size: 1rem;
+                padding: 10px 20px;
+            }
+            
+            #drawnNumbers span {
+                padding: 6px 12px;
+                font-size: 1rem;
+            }
+            
+            #rarityMessage {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            #currentNumber {
+                font-size: 4rem;
+            }
+            
+            .container {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="particleContainer"></div>
+    
+    <!-- GIF特效容器 -->
+    <div class="gif-overlay" id="gifOverlay">
+        <div class="gif-container">
+            <img id="gifImage" src="" alt="特效GIF">
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>🎲 幸運抽取（優化版）</h1>
+        
+        <button id="drawButton" aria-label="開始隨機抽取數字">開始抽取</button>
+        
+        <div id="resultArea" role="status" aria-live="polite">
+            <div id="rarityMessage"></div>
+            <div id="currentNumber"></div>
+            <div id="drawnNumbers"></div>
+            <div id="statusMessage">點擊按鈕開始抽取數字 (1-22)</div>
+        </div>
+        
+        <button id="resetButton" aria-label="重置抽取系統">重新開始</button>
+    </div>
+
+    <script>
+        // 配置對象
+        const CONFIG = {
+            totalNumbers: 22,
+            animationDuration: {
+                common: 800,
+                legendary: 3000
+            },
+            particleSettings: {
+                common: { count: 50, duration: 2 },
+                uncommon: { count: 75, duration: 2 },
+                rare: { count: 100, duration: 2 },
+                epic: { count: 150, duration: 2.5 },
+                legendary: { count: 200, duration: 3 }
+            },
+            gifDuration: 2500 // GIF播放持续时间
+        };
+
+        // 應用狀態
+        const AppState = {
+            IDLE: 'idle',
+            DRAWING: 'drawing',
+            SHOWING_GIF: 'showing_gif',
+            COMPLETED: 'completed'
+        };
+
+        // 稀有度配置
+        const RARITIES = new Map([
+            ['common', { name: '普通', color: '#ffffff', probability: 0.45, class: 'common', particleColor: 'rgba(255, 255, 255, 0.7)' }],
+            ['uncommon', { name: '罕見', color: '#90ee90', probability: 0.3, class: 'uncommon', particleColor: 'rgba(50, 205, 50, 0.7)' }],
+            ['rare', { name: '稀有', color: '#add8e6', probability: 0.15, class: 'rare', particleColor: 'rgba(51, 153, 255, 0.7)' }],
+            ['epic', { name: '史詩', color: '#d8bfd8', probability: 0.07, class: 'epic', particleColor: 'rgba(153, 102, 255, 0.7)' }],
+            ['legendary', { name: '傳奇', color: '#f0e68c', probability: 0.03, class: 'legendary', particleColor: 'rgba(255, 215, 0, 0.7)' }]
+        ]);
+
+        // 數字描述配置（移除所有emoji）
+        const NUMBER_DESCRIPTIONS = new Map([
+            [1, { message: '恭喜獲得"家里有事"1號！今天不用上學啦！', color: '#87CEFA' }],
+            [2, { message: '恭喜獲得2號！大樹在風中瘋狂地甩頭髮！', color: '#90EE90' }],
+            [3, { message: '恭喜獲得3號！用手吃飯，就是香！', color: '#FFFFFF' }],
+            [4, { message: '米奇妙妙屋，開啟！恭喜獲得神奇的4號！', color: 'yellow', font: "'Comic Sans MS', sans-serif" }],
+            [5, { message: '恭喜獲得5號！記住：不讀書就會變太監！', color: '#FF69B4' }],
+            [6, { message: '恭喜獲得6號！沉默是金，什麼都不說...', color: '#87CEFA' }],
+            [7, { message: '恭喜獲得7號！空手道高手在此！', color: '#FFD700' }],
+            [8, { message: '恭喜獲得孫悟空8號！', color: '#FFD700' }],
+            [9, { message: '恭喜獲得站在樹上的9號！', color: '#90EE90' }],
+            [10, { message: '恭喜獲得10號！數數會數漏一個哦~', color: '#87CEFA' }],
+            [11, { message: '恭喜獲得水上滑行的11號！', color: '#87CEFA' }],
+            [12, { message: '恭喜獲得12號！蜜蜂"啤啤"叫~', color: '#FFD700' }],
+            [13, { message: '恭喜獲得金魚記憶13號...我剛才要說什麼來着？', color: '#FFD700' }],
+            [14, { message: '恭喜獲得14號！作文合格！', color: '#FFD700' }],
+            [15, { message: '恭喜獲得15號！一起讀《魔道祖師》吧！', color: '#FF69B4' }],
+            [16, { message: '恭喜獲得16號！跳遠10米，打破世界紀錄！', color: '#FFA500' }],
+            [17, { message: '恭喜獲得爆炸堅果17號！BOOM！', color: '#FF4500' }],
+            [18, { message: '恭喜獲得18號！功課被貓吃掉了！', color: '#DEB887' }],
+            [19, { message: '恭喜獲得19號！今天請大家吃雞翅！', color: '#FF69B4' }],
+            [20, { message: '恭喜獲得20號！真相只有一個！我是高中生偵探——工藤心一！', color: '#4169E1' }],
+            [21, { message: '恭喜獲得21號！有鏡頭就會望向那個方向~', color: '#87CEFA' }],
+            [22, { message: '恭喜獲得22號！今天輪到你清洗馬桶了！', color: '#E0FFFF' }]
+        ]);
+
+        // 數字抽取系統類
+        class NumberDrawSystem {
+            constructor() {
+                this.availableNumbers = [];
+                this.drawnNumbers = [];
+                this.rarityData = new Map();
+                this.currentState = AppState.IDLE;
+                this.animationFrameId = null;
+                
+                this.drawButton = document.getElementById('drawButton');
+                this.resetButton = document.getElementById('resetButton');
+                this.currentNumber = document.getElementById('currentNumber');
+                this.drawnNumbersElement = document.getElementById('drawnNumbers');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.rarityMessage = document.getElementById('rarityMessage');
+                this.particleContainer = document.getElementById('particleContainer');
+                this.gifOverlay = document.getElementById('gifOverlay');
+                this.gifImage = document.getElementById('gifImage');
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.initializeNumbers();
+                this.assignRarities();
+                
+                // 頁面加載動畫
+                this.currentNumber.style.opacity = '0';
+                setTimeout(() => {
+                    this.currentNumber.style.opacity = '1';
+                }, 500);
+            }
+            
+            setupEventListeners() {
+                this.drawButton.addEventListener('click', () => {
+                    this.handleDraw();
+                });
+                
+                this.resetButton.addEventListener('click', () => {
+                    this.resetSystem();
+                });
+                
+                // GIF點擊關閉
+                this.gifOverlay.addEventListener('click', () => {
+                    this.hideGif();
+                });
+                
+                // 鍵盤快捷鍵支持
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        if (this.currentState === AppState.IDLE) {
+                            this.handleDraw();
+                        }
+                    } else if (e.key === 'r' || e.key === 'R') {
+                        this.resetSystem();
+                    } else if (e.key === 'Escape') {
+                        this.hideGif();
+                    }
+                });
+                
+                // 清理粒子效果
+                setInterval(() => {
+                    this.cleanupParticles();
+                }, 5000);
+            }
+            
+            initializeNumbers() {
+                this.availableNumbers = Array.from({ length: CONFIG.totalNumbers }, (_, i) => i + 1);
+                this.drawnNumbers = [];
+                this.updateStatusMessage();
+            }
+            
+            assignRarities() {
+                this.rarityData.clear();
+                
+                this.availableNumbers.forEach(number => {
+                    let random = Math.random();
+                    
+                    let cumulativeProbability = 0;
+                    let assignedRarity = 'common';
+                    
+                    for (const [rarity, config] of RARITIES) {
+                        cumulativeProbability += config.probability;
+                        if (random < cumulativeProbability) {
+                            assignedRarity = rarity;
+                            break;
+                        }
+                    }
+                    
+                    this.rarityData.set(number, assignedRarity);
+                });
+            }
+            
+            async handleDraw() {
+                if (this.availableNumbers.length === 0 || this.currentState !== AppState.IDLE) {
+                    return;
+                }
+                
+                this.currentState = AppState.DRAWING;
+                this.drawButton.disabled = true;
+                this.drawButton.textContent = '抽取中...';
+                this.statusMessage.textContent = '正在抽取，請稍候...';
+                this.rarityMessage.textContent = '';
+                this.currentNumber.style.opacity = '0.7';
+                
+                try {
+                    await this.drawAnimation();
+                    
+                    const randomIndex = Math.floor(Math.random() * this.availableNumbers.length);
+                    const number = this.availableNumbers[randomIndex];
+                    const rarity = this.rarityData.get(number);
+                    
+                    // 顯示數字
+                    this.currentNumber.textContent = number;
+                    this.currentNumber.style.color = RARITIES.get(rarity).color;
+                    this.currentNumber.style.transform = 'scale(1.2)';
+                    this.currentNumber.classList.add('number-appear');
+                    
+                    // 顯示描述信息
+                    this.showRarityMessage(number, rarity);
+                    
+                    // 添加粒子效果
+                    this.createParticles(rarity);
+                    
+                    // 播放GIF特效
+                    await this.playGifEffect(number);
+                    
+                    // 更新已抽取數字列表
+                    this.drawnNumbers.push(number);
+                    this.availableNumbers.splice(randomIndex, 1);
+                    this.updateDrawnNumbersDisplay();
+                    
+                    // 更新狀態
+                    this.updateStatusMessage();
+                    
+                    setTimeout(() => {
+                        this.currentNumber.style.transform = 'scale(1)';
+                        this.currentNumber.classList.remove('number-appear');
+                    }, 800);
+                    
+                    // 檢查是否完成
+                    if (this.availableNumbers.length === 0) {
+                        this.currentState = AppState.COMPLETED;
+                        setTimeout(() => {
+                            alert('恭喜！所有數字已抽取完畢！');
+                        }, 500);
+                    } else {
+                        this.currentState = AppState.IDLE;
+                    }
+                    
+                } catch (error) {
+                    console.error('抽取過程中發生錯誤:', error);
+                    this.statusMessage.textContent = '抽取失敗，請重試';
+                } finally {
+                    this.drawButton.disabled = this.availableNumbers.length === 0;
+                    this.drawButton.textContent = this.availableNumbers.length > 0 ? '繼續抽取' : '抽取完畢';
+                }
+            }
+            
+            drawAnimation() {
+                return new Promise(resolve => {
+                    let counter = 0;
+                    const maxCounter = 20;
+                    
+                    const animate = () => {
+                        if (counter >= maxCounter) {
+                            resolve();
+                            return;
+                        }
+                        
+                        const randomIndex = Math.floor(Math.random() * this.availableNumbers.length);
+                        const tempNumber = this.availableNumbers[randomIndex];
+                        const tempRarity = this.rarityData.get(tempNumber);
+                        
+                        this.currentNumber.textContent = tempNumber;
+                        this.currentNumber.style.color = RARITIES.get(tempRarity).color;
+                        this.currentNumber.style.transform = `scale(${1 + Math.sin(counter * 0.2) * 0.1})`;
+                        
+                        counter++;
+                        this.animationFrameId = requestAnimationFrame(animate);
+                    };
+                    
+                    this.animationFrameId = requestAnimationFrame(animate);
+                });
+            }
+            
+            // 播放GIF特效
+            playGifEffect(number) {
+                return new Promise(resolve => {
+                    // 設置GIF路徑
+                    const gifPath = `images/${number}e.gif`;
+                    this.gifImage.src = gifPath;
+                    
+                    // 顯示GIF容器
+                    this.gifOverlay.classList.add('active');
+                    this.currentState = AppState.SHOWING_GIF;
+                    
+                    // 設置超時自動關閉
+                    setTimeout(() => {
+                        this.hideGif();
+                        resolve();
+                    }, CONFIG.gifDuration);
+                });
+            }
+            
+            hideGif() {
+                this.gifOverlay.classList.remove('active');
+                this.gifImage.src = '';
+                if (this.currentState === AppState.SHOWING_GIF) {
+                    this.currentState = AppState.IDLE;
+                }
+            }
+            
+            showRarityMessage(number, rarity) {
+                let messageHTML;
+                
+                if (NUMBER_DESCRIPTIONS.has(number)) {
+                    const description = NUMBER_DESCRIPTIONS.get(number);
+                    messageHTML = `<span style="color: ${description.color}; text-shadow: 0 0 10px ${description.color}; ${description.font ? `font-family: ${description.font};` : ''}">${description.message}</span>`;
+                } else {
+                    const rarityConfig = RARITIES.get(rarity);
+                    messageHTML = `<span style="color: ${rarityConfig.color};">恭喜！獲得${rarityConfig.name}數字！</span>`;
+                }
+                
+                this.rarityMessage.innerHTML = messageHTML;
+            }
+            
+            createParticles(rarity) {
+                const rarityConfig = RARITIES.get(rarity);
+                const particleSettings = CONFIG.particleSettings[rarity] || CONFIG.particleSettings.common;
+                
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                for (let i = 0; i < particleSettings.count; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('particle');
+                    
+                    const size = Math.random() * 10 + 5;
+                    particle.style.width = particle.style.height = `${size}px`;
+                    particle.style.backgroundColor = rarityConfig.particleColor;
+                    particle.style.left = `${centerX}px`;
+                    particle.style.top = `${centerY}px`;
+                    
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 150 + 50;
+                    const targetX = centerX + Math.cos(angle) * distance;
+                    const targetY = centerY + Math.sin(angle) * distance;
+                    
+                    this.particleContainer.appendChild(particle);
+                    
+                    setTimeout(() => {
+                        particle.style.transition = `all ${Math.random() * 1 + 0.5}s ease-out`;
+                        particle.style.left = `${targetX}px`;
+                        particle.style.top = `${targetY}px`;
+                        particle.style.opacity = '0';
+                    }, 10);
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, particleSettings.duration * 1000);
+                }
+            }
+            
+            updateDrawnNumbersDisplay() {
+                this.drawnNumbersElement.innerHTML = '';
+                
+                // 按稀有度排序
+                const sortedNumbers = [...this.drawnNumbers].sort((a, b) => {
+                    const rarityOrder = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
+                    return rarityOrder[this.rarityData.get(b)] - rarityOrder[this.rarityData.get(a)];
+                });
+                
+                sortedNumbers.forEach(num => {
+                    const rarity = this.rarityData.get(num);
+                    const rarityConfig = RARITIES.get(rarity);
+                    
+                    const span = document.createElement('span');
+                    span.textContent = num;
+                    span.classList.add(rarityConfig.class);
+                    
+                    // 添加稀有度標籤
+                    if (rarity !== 'common' && rarity !== 'uncommon') {
+                        const tag = document.createElement('span');
+                        tag.classList.add('rarity-tag');
+                        tag.textContent = rarityConfig.name.substring(0, 2);
+                        span.appendChild(tag);
+                    }
+                    
+                    // 特殊數字樣式
+                    if (NUMBER_DESCRIPTIONS.has(num)) {
+                        span.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.4)';
+                        span.style.borderColor = 'rgba(255, 215, 0, 0.6)';
+                    }
+                    
+                    span.style.opacity = '0';
+                    span.style.transform = 'translateY(10px)';
+                    this.drawnNumbersElement.appendChild(span);
+                    
+                    setTimeout(() => {
+                        span.style.opacity = '1';
+                        span.style.transform = 'translateY(0)';
+                    }, 50);
+                });
+            }
+            
+            updateStatusMessage() {
+                this.statusMessage.textContent = `已抽取 ${this.drawnNumbers.length} 個數字，剩餘 ${this.availableNumbers.length} 個`;
+            }
+            
+            resetSystem() {
+                // 取消動畫幀
+                if (this.animationFrameId) {
+                    cancelAnimationFrame(this.animationFrameId);
+                }
+                
+                // 隱藏GIF
+                this.hideGif();
+                
+                // 重置狀態
+                this.currentState = AppState.IDLE;
+                this.currentNumber.textContent = '';
+                this.rarityMessage.textContent = '';
+                
+                // 重新初始化
+                this.initializeNumbers();
+                this.assignRarities();
+                this.updateDrawnNumbersDisplay();
+                
+                this.drawButton.disabled = false;
+                this.drawButton.textContent = '開始抽取';
+                this.statusMessage.textContent = '點擊按鈕開始抽取數字 (1-22)';
+                
+                // 清理粒子
+                this.particleContainer.innerHTML = '';
+            }
+            
+            cleanupParticles() {
+                const particles = document.querySelectorAll('.particle');
+                particles.forEach(particle => {
+                    if (!particle.isConnected || parseFloat(particle.style.opacity) === 0) {
+                        particle.remove();
+                    }
+                });
+            }
+        }
+
+        // 初始化應用
+        document.addEventListener('DOMContentLoaded', () => {
+            // 預加載GIF資源
+            const preloadGifs = () => {
+                const gifUrls = [];
+                for (let i = 1; i <= 22; i++) {
+                    gifUrls.push(`images/${i}e.gif`);
+                }
+                
+                // 預加載所有GIF
+                gifUrls.forEach(url => {
+                    const img = new Image();
+                    img.src = url;
+                });
+            };
+            
+            preloadGifs();
+            
+            // 創建數字抽取系統實例
+            const numberDrawSystem = new NumberDrawSystem();
+        });
+    </script>
+</body>
+</html>
