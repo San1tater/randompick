@@ -18,10 +18,6 @@
             --animation-fast: 0.3s;
             --animation-normal: 0.5s;
             --animation-slow: 1s;
-            
-            /* GIF顯示尺寸 */
-            --gif-width: 400px;
-            --gif-height: 300px;
         }
 
         * {
@@ -282,14 +278,14 @@
             box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
         }
 
-        /* GIF特效容器 */
+        /* GIF特效容器 - 修改為全屏 */
         .gif-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             display: none;
             justify-content: center;
             align-items: center;
@@ -298,34 +294,70 @@
 
         .gif-overlay.active {
             display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .gif-container {
-            width: var(--gif-width);
-            height: var(--gif-height);
+            width: 100%;
+            height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            padding: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
         }
 
         .gif-container img {
-            width: 100%;
-            height: 100%;
+            max-width: 90%;
+            max-height: 90%;
             object-fit: contain;
-            border-radius: 5px;
+            border-radius: 10px;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.3);
+            animation: gifAppear 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes gifAppear {
+            0% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* 關閉GIF按鈕 */
+        .close-gif {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .close-gif:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
         }
 
         /* 響應式設計 */
         @media (max-width: 768px) {
-            :root {
-                --gif-width: 350px;
-                --gif-height: 262px;
-            }
-            
             body {
                 padding: 15px;
             }
@@ -351,14 +383,17 @@
             #rarityMessage {
                 font-size: 1.3rem;
             }
+            
+            .close-gif {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+                top: 15px;
+                right: 15px;
+            }
         }
 
         @media (max-width: 480px) {
-            :root {
-                --gif-width: 300px;
-                --gif-height: 225px;
-            }
-            
             body {
                 padding: 10px;
             }
@@ -389,14 +424,22 @@
             #rarityMessage {
                 font-size: 1.2rem;
             }
+            
+            .gif-container img {
+                max-width: 95%;
+                max-height: 80%;
+            }
+            
+            .close-gif {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+                top: 10px;
+                right: 10px;
+            }
         }
 
         @media (max-width: 360px) {
-            :root {
-                --gif-width: 280px;
-                --gif-height: 210px;
-            }
-            
             h1 {
                 font-size: 1.6rem;
             }
@@ -415,8 +458,9 @@
 <body>
     <div id="particleContainer"></div>
     
-    <!-- GIF特效容器 -->
+    <!-- GIF特效容器 - 修改為全屏 -->
     <div class="gif-overlay" id="gifOverlay">
+        <button class="close-gif" id="closeGif" aria-label="關閉GIF">×</button>
         <div class="gif-container">
             <img id="gifImage" src="" alt="特效GIF">
         </div>
@@ -452,7 +496,7 @@
                 epic: { count: 150, duration: 2.5 },
                 legendary: { count: 200, duration: 3 }
             },
-            gifDuration: 2500 // GIF播放持续时间
+            gifDuration: 3500 // GIF播放持续时间
         };
 
         // 應用狀態
@@ -516,6 +560,7 @@
                 this.particleContainer = document.getElementById('particleContainer');
                 this.gifOverlay = document.getElementById('gifOverlay');
                 this.gifImage = document.getElementById('gifImage');
+                this.closeGifButton = document.getElementById('closeGif');
                 
                 this.init();
             }
@@ -542,8 +587,10 @@
                 });
                 
                 // GIF點擊關閉
-                this.gifOverlay.addEventListener('click', () => {
-                    this.hideGif();
+                this.gifOverlay.addEventListener('click', (e) => {
+                    if (e.target === this.gifOverlay || e.target === this.closeGifButton) {
+                        this.hideGif();
+                    }
                 });
                 
                 // 鍵盤快捷鍵支持
@@ -623,7 +670,7 @@
                     // 添加粒子效果
                     this.createParticles(rarity);
                     
-                    // 播放GIF特效
+                    // 播放GIF特效 - 全屏
                     await this.playGifEffect(number);
                     
                     // 更新已抽取數字列表
@@ -685,14 +732,14 @@
                 });
             }
             
-            // 播放GIF特效
+            // 播放GIF特效 - 全屏
             playGifEffect(number) {
                 return new Promise(resolve => {
-                    // 設置GIF路徑 - 更新為 images/6e1.gif 格式
+                    // 設置GIF路徑
                     const gifPath = `images/6e${number}.gif`;
                     this.gifImage.src = gifPath;
                     
-                    // 顯示GIF容器
+                    // 顯示GIF容器 - 全屏
                     this.gifOverlay.classList.add('active');
                     this.currentState = AppState.SHOWING_GIF;
                     
