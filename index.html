@@ -278,7 +278,7 @@
             box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
         }
 
-        /* GIF特效容器 - 僅全屏播放 */
+        /* GIF特效容器 - 全屏播放 */
         .gif-overlay {
             position: fixed;
             top: 0;
@@ -303,7 +303,8 @@
         .gif-container img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            /* 使用contain來保持GIF原始比例並完整顯示 */
+            object-fit: contain;
         }
 
         /* 響應式設計 */
@@ -387,7 +388,7 @@
 <body>
     <div id="particleContainer"></div>
     
-    <!-- GIF特效容器 - 僅全屏播放 -->
+    <!-- GIF特效容器 - 全屏播放 -->
     <div class="gif-overlay" id="gifOverlay">
         <div class="gif-container">
             <img id="gifImage" src="" alt="特效GIF">
