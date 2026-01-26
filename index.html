@@ -278,82 +278,32 @@
             box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
         }
 
-        /* GIF特效容器 - 修改為全屏 */
+        /* GIF特效容器 - 僅全屏播放 */
         .gif-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.2);
             display: none;
-            justify-content: center;
-            align-items: center;
             z-index: 1000;
         }
 
         .gif-overlay.active {
-            display: flex;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            display: block;
         }
 
         .gif-container {
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
+            display: block;
         }
 
         .gif-container img {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            border-radius: 10px;
-            box-shadow: 0 0 40px rgba(255, 255, 255, 0.3);
-            animation: gifAppear 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes gifAppear {
-            0% {
-                transform: scale(0.7);
-                opacity: 0;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        /* 關閉GIF按鈕 */
-        .close-gif {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            font-size: 1.5rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.3s ease;
-            z-index: 1001;
-        }
-
-        .close-gif:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.1);
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         /* 響應式設計 */
@@ -382,14 +332,6 @@
             
             #rarityMessage {
                 font-size: 1.3rem;
-            }
-            
-            .close-gif {
-                width: 40px;
-                height: 40px;
-                font-size: 1.2rem;
-                top: 15px;
-                right: 15px;
             }
         }
 
@@ -424,19 +366,6 @@
             #rarityMessage {
                 font-size: 1.2rem;
             }
-            
-            .gif-container img {
-                max-width: 95%;
-                max-height: 80%;
-            }
-            
-            .close-gif {
-                width: 35px;
-                height: 35px;
-                font-size: 1rem;
-                top: 10px;
-                right: 10px;
-            }
         }
 
         @media (max-width: 360px) {
@@ -458,9 +387,8 @@
 <body>
     <div id="particleContainer"></div>
     
-    <!-- GIF特效容器 - 修改為全屏 -->
+    <!-- GIF特效容器 - 僅全屏播放 -->
     <div class="gif-overlay" id="gifOverlay">
-        <button class="close-gif" id="closeGif" aria-label="關閉GIF">×</button>
         <div class="gif-container">
             <img id="gifImage" src="" alt="特效GIF">
         </div>
@@ -496,7 +424,7 @@
                 epic: { count: 150, duration: 2.5 },
                 legendary: { count: 200, duration: 3 }
             },
-            gifDuration: 3500 // GIF播放持续时间
+            gifDuration: 3000 // GIF播放持续时间
         };
 
         // 應用狀態
@@ -560,7 +488,6 @@
                 this.particleContainer = document.getElementById('particleContainer');
                 this.gifOverlay = document.getElementById('gifOverlay');
                 this.gifImage = document.getElementById('gifImage');
-                this.closeGifButton = document.getElementById('closeGif');
                 
                 this.init();
             }
@@ -584,26 +511,6 @@
                 
                 this.resetButton.addEventListener('click', () => {
                     this.resetSystem();
-                });
-                
-                // GIF點擊關閉
-                this.gifOverlay.addEventListener('click', (e) => {
-                    if (e.target === this.gifOverlay || e.target === this.closeGifButton) {
-                        this.hideGif();
-                    }
-                });
-                
-                // 鍵盤快捷鍵支持
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        if (this.currentState === AppState.IDLE) {
-                            this.handleDraw();
-                        }
-                    } else if (e.key === 'r' || e.key === 'R') {
-                        this.resetSystem();
-                    } else if (e.key === 'Escape') {
-                        this.hideGif();
-                    }
                 });
                 
                 // 清理粒子效果
